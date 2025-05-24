@@ -2,10 +2,10 @@ package server
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net"
-	"os"
+
+	"github.com/Sp33ktrE/redis-clone/resp"
 )
 
 type Server struct {
@@ -35,16 +35,15 @@ func (server *Server) Run() {
 
 	// read client message
 	for {
-		buff := make([]byte, 1024)
+		resp := resp.New(conn)
 
-		_, err := conn.Read(buff)
+		value, err := resp.Read()
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			fmt.Println("Error reading from client: ", err.Error())
-			os.Exit(1)
+			fmt.Println(err)
+			return
 		}
+
+		fmt.Println(value)
 
 		conn.Write([]byte("+OK\r\n"))
 	}
