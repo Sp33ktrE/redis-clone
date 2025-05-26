@@ -35,16 +35,17 @@ func (server *Server) Run() {
 
 	// read client message
 	for {
-		resp := resp.New(conn)
+		respReader := resp.NewReader(conn)
 
-		value, err := resp.Read()
+		value, err := respReader.Read()
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
-		fmt.Println(value)
+		_ = value
 
-		conn.Write([]byte("+OK\r\n"))
+		respWriter := resp.NewWriter(conn)
+		respWriter.Write(resp.Value{Typ: "string", Str: "OK"})
 	}
 }
