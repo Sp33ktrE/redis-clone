@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/Sp33ktrE/redis-clone/aof"
 	"github.com/Sp33ktrE/redis-clone/cmd"
 	"github.com/Sp33ktrE/redis-clone/resp"
 )
@@ -28,12 +29,32 @@ func (server *Server) Run() {
 		log.Fatal(err)
 	}
 
+	aoFile, err := aof.NewAof("database.aof")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer aoFile.Close()
+
 	conn, err := listener.Accept()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	defer conn.Close()
+
+	aoFile.Read(func(value resp.Value) {
+		command := strings.ToUpper(value.Array[0].Bulk)
+		args := value.Array[1:]
+
+		handler, ok := cmd.Handlers[command]
+		if !ok {
+			fmt.Println("Invalid command: ", command)
+			return
+		}
+
+		handler(args)
+	})
 
 	// read client message
 	for {
@@ -66,6 +87,11 @@ func (server *Server) Run() {
 			respWriter.Write(resp.Value{Typ: "string", Str: ""})
 			continue
 		}
+
+		if command == "SET" || command == "HSET" {
+			aoFile.Write(value)
+		}
+
 		result := handler(args)
 		respWriter.Write(result)
 	}
