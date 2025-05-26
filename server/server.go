@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 
+	"github.com/Sp33ktrE/redis-clone/cmd"
 	"github.com/Sp33ktrE/redis-clone/resp"
 )
 
@@ -43,9 +45,28 @@ func (server *Server) Run() {
 			return
 		}
 
-		_ = value
+		if value.Typ != "array" {
+			fmt.Println("Invalid request, expected array")
+			continue
+		}
+
+		if len(value.Array) == 0 {
+			fmt.Println("Invalid request, expected array length > 0")
+			continue
+		}
+
+		command := strings.ToUpper(value.Array[0].Bulk)
+		args := value.Array[1:]
 
 		respWriter := resp.NewWriter(conn)
-		respWriter.Write(resp.Value{Typ: "string", Str: "OK"})
+
+		handler, ok := cmd.Handlers[command]
+		if !ok {
+			fmt.Println("Invalid command: ", command)
+			respWriter.Write(resp.Value{Typ: "string", Str: ""})
+			continue
+		}
+		result := handler(args)
+		respWriter.Write(result)
 	}
 }
